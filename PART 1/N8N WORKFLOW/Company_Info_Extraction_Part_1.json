@@ -1,0 +1,1364 @@
+{
+  "name": "Company_Info_Extraction_Part_1",
+  "nodes": [
+    {
+      "parameters": {
+        "jsCode": "return $input.all().map(item => {\n    try {\n        // Ensure \"output\" key exists and is a string\n        if (!item.json.output || typeof item.json.output !== \"string\") {\n            console.warn(\"Invalid or missing 'output' key:\", item);\n            return [{ topic: \"Unknown Topic\", purpose: \"Unknown Purpose\" }];\n        }\n\n        // First, clean up the string (handle common JSON issues)\n        let jsonString = item.json.output.trim();\n\n        // If jsonString is already an object, return an error (avoid double parsing issues)\n        if (typeof jsonString === \"object\") {\n            console.warn(\"Unexpected object format, expected string:\", jsonString);\n            return [{ topic: \"Error\", purpose: \"Unexpected object format\" }];\n        }\n\n        // Step 1: Remove triple backticks if they exist\n        jsonString = jsonString.replace(/^```json\\s*|\\s*```$/g, \"\").trim();\n\n        // Step 2: Fix common issues (remove unnecessary escape characters)\n        jsonString = jsonString.replace(/\\\\n/g, \"\").replace(/\\\\t/g, \"\").replace(/\\\\\"/g, '\"');\n\n        let parsedData;\n        try {\n            parsedData = JSON.parse(jsonString); // Convert string to actual JSON\n        } catch (jsonError) {\n            console.error(\"Failed to parse outer JSON:\", jsonString, jsonError);\n            return [{ topic: \"Error\", purpose: \"Failed to parse outer JSON\" }];\n        }\n\n        // Ensure parsedData is an array; if not, wrap it in an array\n        if (!Array.isArray(parsedData)) {\n            console.warn(\"Parsed data is not an array, wrapping it:\", parsedData);\n            parsedData = [parsedData];\n        }\n\n        // Function to clean text, allowing only a-z, A-Z, 0-9, space, -/\"./?/'\n        function cleanText(text) {\n            return text ? text.toString().replace(/[^a-zA-Z0-9\\s\\-\\/\\\"\\.\\/\\?\\''\\']/g, \"\").trim() : \"Unknown\";\n        }\n\n        // Return structured and cleaned data\n        return parsedData.map(obj => ({\n            topic: cleanText(obj.topic),\n            purpose: cleanText(obj.purpose)\n        }));\n\n    } catch (error) {\n        console.error(\"Unexpected processing error:\", error);\n        return [{ topic: \"Error\", purpose: \"Unexpected processing error\" }];\n    }\n}).flat(); // Flatten in case nested arrays appear\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1660,
+        160
+      ],
+      "id": "3f0ecf31-818b-449b-9df8-3bf4b1a6eb84",
+      "name": "Cleaning Node"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Company Name :  {{ $json['Company Name'] }}\nIndustry: {{ $json.Industry }}\nSIN Code: {{ $json['ISIN Code'] }}",
+        "options": {
+          "systemMessage": "You are a corporate intelligence analyst specializing in company profile research for top Indian companies listed on the **NIFTY 100 index. \nYour task is to **generate a concise, specific, and contextually accurate title followed by a detailed JSON response** aligned with that title.\n\nSTORM is an AI-powered research prototype developed by Stanford University's OVAL (Open Virtual Assistant Lab)\nAutomated Research & Report Generation\n\nInput Context\nCompany: {Company from NIFTY 100}\nIndustry: {Company's Industry}\nSIN Code: {Company's SIN Code}\n\nThe \"topic\" must adhere to the following **strict requirements**:\n\n1st. Topic Requirements:\n1. The Topic must be **specific, concise, and unambiguous** (under **12 words**).\n2. It must be directly **relevant to the company** and the **research scope**.\n3. Avoid **vague**, **broad**, or **generic phrases** (e.g., _“Key insights,” “Comprehensive analysis”_, etc.).\n4. **Avoid vague phrases** like _“explore,” “examine,” “understand”_, etc.\n5. **Avoid projections** or speculative terms (e.g., _“expected,” “anticipated”_, etc).\n6.. **Do NOT** include **questions**, **hypotheticals**, or **opinion-based phrasing**.\n7. **Prohibited structures**:\n   - No **commands** (e.g., _“Analyze XYZ Company”_).\n   - No **unclear actions** (e.g., _“Study how XYZ grew.”_).\n   - No **overly broad topics** (e.g., _“Overview of XYZ Company.”_).\n8. Use **direct, researchable subjects** (e.g., _“XYZ Company’s market expansion plans 2025”_).\n\n2nd. Writing Topics in STORM Examples:\n✅ Correct Approach for Writing Topics in STORM\nWhen structuring your topic, follow these best practices:\n\nStay Under 15 Words\n\n✅ \"JSW Energy’s renewable energy expansion plans latest\"\n❌ \"How JSW Energy might expand its market presence and investment strategies for the future in 2025?\" (Too long)\nAvoid Forbidden Characters (e.g., |, ?, !, %, etc.)\n\n✅ \"Growth of AI in Financial Markets by 2030\"\n❌ \"AI Growth & Expansion in Finance | 2030\" (| is a forbidden character)\nUse Clear, Factual, and Neutral Phrasing\n\n✅ \"The Role of AI in Cancer Diagnosis\"\n❌ \"Will AI become better than doctors at diagnosing cancer?\" (Speculative, biased)\nAvoid Questions and Commands\n\n✅ \"COVID-19 Vaccine Effectiveness in Japan\"\n❌ \"Can you write about how COVID vaccines work in Japan?\"\nNo Hypothetical or Speculative Phrases\n\n✅ \"Economic Impact of Electric Vehicles in the USA future \"\n❌ \"How electric vehicles might change the economy in the USA?\"\nBe Specific but Not Overly Detailed\n\n✅ \"Blockchain Adoption in Banking Future Outlook\"\n❌ \"The influence of blockchain technology on small and mid-sized banks in North America from 2020-2035 and how it will reshape financial transactions.\" (Too detailed)\n\n\n3rd. Purpose Requirements:\nThe purpose field in STORM is meant to clarify the intent of the topic and ensure that the generated article aligns with the user’s objectives. Here’s how to structure it effectively:\n1. The purpose should state the reason behind selecting the topic.\n2. Keep It Concise (10-20 Words)\n3. Focus on Objective Goals (Avoid Subjective Language)\n4. Avoid Questions or Open-Ended Phrasing\n5. Avoid Speculative or Hypothetical Language\n6. Be Specific, But Not Too Detailed\n\n4th. Output Format:\nCorrect Approach for Formatting STORM Topics & Purpose in JSON\nWhen generating topics and purposes in JSON format, follow these strict rules:\n\n1. Provide Output as a Strictly Clean JSON Array \nEnsure the output is in JSON array format.\nEach item should contain only two fields: \"topic\" and \"purpose\".\n\n✅ Example of Correct JSON Format:\n[\n  {\n    \"topic\": \"AI in Cybersecurity Threat Detection in Future Outlook\",\n    \"purpose\": \"To analyze how AI enhances threat detection in cybersecurity.\"\n  },\n  {\n    \"topic\": \"Impact of 5G on Smart Cities\",\n    \"purpose\": \"To assess the influence of 5G technology on urban development.\"\n  }\n  {\n    \"topic\": \"Impact of AI on Retail and E-commerce\",\n    \"purpose\": \"To examine AI's role in e-commerce and retail.\"\n  }\n]\nWhy is this correct:\nIt is a JSON array.\nEach item contains exactly 2 fields (\"topic\" and \"purpose\").\nThe purpose is concise (under 20 words).\nUses action-driven goals (\"analyze,\" \"assess\").\nNo Special Characters (&, |, \\n, :, -, etc.)\nNo Extraneous Elements or Ambiguous Phrases.\nNo Commands, No Specific Instructions.\nUse Plain Text (No Extra Formatting).\n\n❌ Incorrect Example:\n[\n  {\n    \"topic\": \"Impact of AI on Retail & E-commerce in 2025\",\n    \"purpose\": \"To examine AI's role in e-commerce/retail.\"\n  }\n\n  {\n    \"topic\": \"Climate Change\",\n    \"purpose\": \"To understand its effects.\"\n  }\n  \n  {\n    \"topic\": \"**Blockchain in Finance**\",\n    \"purpose\": \"*To analyze its impact on secure transactions.\"\n  }\n]\nWhy is this not correct:\nContains Special Characters.\nToo Vague.\nContains a Command.\nUses Markdown Formatting.\n\n5th. Strictly Focus on all key coverage areas while generating topics and purpose for Storm:\nNote: Ensure that all topics and purposes strictly include a time reference such as \"2025\", or \"latest\", or \"Future Outlook\" or to maintain relevance and forward-looking insights.\nNote: Generate one title per coverage area and purposes that must align with each coverage area, Ensure coverage of all key aspects without duplication.\n\ncontaining exactly below given 50 structured items, ensure that no unnecessary additional explanation is generated before or after the JSON. \nEach item must ensure Topic Requirements and Purpose Requirements\n\n1.   Basic Overview of [Company]  \n2.   Mission, Vision, and Values  \n3.   Leadership Strategies of Key Executives at [Company]  \n4.   Corporate Governance and Compliance at [Company]  \n5.   Ownership and Shareholding Patterns  \n6.   Subsidiaries and Joint Ventures of [Company]  \n7.   Business Segments and Operational Divisions of [Company]  \n8.   Business Segments and Revenue Breakdown of [Company]  \n9.   Product and Service Portfolio Overview of [Company] \n10.  Market Share and Competitive Positioning of [Company]  \n11.  Growth Rate and Performance Metrics of [Company]   \n12.  Operational Footprint and Global Expansion Plans of [Company]   \n13.  Revenue, Profit, and Net Income Trends of [Company]   \n14.  Financial Ratios and Key Performance Metrics of [Company]   \n15.  Debt-to-Equity, ROA, and EPS Analysis of [Company]  \n16.  Custom Financial Metrics and Growth Drivers of [Company]   \n17.  Major Acquisitions and Mergers of [Company]   \n18.  Strategic Alliances and Joint Ventures of [Company]   \n19.  M&A and Partnership Impact on Business Performance of [Company]   \n20.  Digital Transformation and Technology Investments of [Company]   \n21.  Automation and AI Integration Strategies of [Company]   \n22.  Research and Devlopment Initiatives and Innovation Strategy [Company]   \n23.  Environmental and Social Responsibility Initiatives of [Company]   \n24.  Corporate Sustainability Goals of [Company]   \n25.  ESG Compliance and Sustainability Impact of [Company]   \n26.  Expansion Strategies like Domestic and Global Plans of [Company]   \n27.  Investment Strategies and Market Outlook of [Company]   \n28.  Risk Management and Future Challenges of [Company]   \n29.  SWOT Analysis such as Strengths, Weaknesses, Opportunities, Threats of [Company]   \n30.  Industry and Competitor Benchmarking like Market Position of [Company]   \n31.  Brand Positioning and Differentiation like Competitive Strategy of [Company]   \n32.  Regulatory and Legal Challenges like Compliance Trends of [Company]   \n33.  Past Controversies and Resolutions of [Company]   \n34.  Compliance with Financial and Corporate Laws of [Company]   \n35.  Industry Awards and Certifications of [Company]   \n36.  Recognition for Innovation and Leadership of [Company]   \n37.  Brand Reputation and Equity of [Company]   \n38.  Long-Term Corporate Vision and Strategic Goals of [Company]   \n39.  Strategic Roadmap like Business Growth Plans of [Company]   \n40.  Investment Trends and Financial Challenges of [Company]   \n41.  Adoption of AI, Blockchain, and Cloud Technologies of [Company]   \n42.  Digital Transformation and Operational Efficiency of [Company]   \n43.  IT Infrastructure and Automation Investments of [Company]   \n44.  Cybersecurity Strategies and Data Protection Measures of [Company]   \n45.  Technology-Driven Customer Experience Innovations of [Company]   \n46.  Revenue Growth Drivers and M&A Impact of [Company]   \n47.  Expansion Strategies like Market Entry and Supply Chain Growth of [Company]   \n48.  Market Outlook and Competitive Positioning of [Company]   \n49.  Management Guidance like CEO Strategy and Investor Insights of [Company]   \n50.  Risks and Challenges: Compliance, Cybersecurity, and Market Uncertainty of [Company]  "
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.7,
+      "position": [
+        -2120,
+        160
+      ],
+      "id": "828d25ff-82c6-4242-83b3-8e8bc78beed6",
+      "name": "Title and Response Generate"
+    },
+    {
+      "parameters": {
+        "operation": "download",
+        "fileId": {
+          "__rl": true,
+          "value": "1z7vW9tveIYEanNcEEXzpfcnQi3fQrmPn5nw0DjupoB4",
+          "mode": "list",
+          "cachedResultName": "NIFTY 100",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1z7vW9tveIYEanNcEEXzpfcnQi3fQrmPn5nw0DjupoB4/edit?usp=drivesdk"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        -2900,
+        -60
+      ],
+      "id": "df29b74f-8492-4667-b578-152a289cff7c",
+      "name": "Google Drive",
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "gHysVP3bVM6QVhzF",
+          "name": "Google Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1,
+      "position": [
+        -2760,
+        -60
+      ],
+      "id": "9797256e-9b1d-4f11-8e1f-44cd3e19345d",
+      "name": "Extract from File"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "DG2JBPlQVftkn5ut",
+          "mode": "list",
+          "cachedResultName": "DIfy_Workflow_Part_2"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [
+        -380,
+        1500
+      ],
+      "id": "1e2b4150-0c9f-43fe-a2de-25fb9ed4bb1f",
+      "name": "Execute Workflow",
+      "disabled": true
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=text : {{ $json.mergedText }}",
+        "options": {
+          "systemMessage": "Instruction: \nYou are a meticulous and detail-oriented assistant. Analyze the provided {text} thoroughly to extract all key insights present in the JSON while preserving every detail, \nand also, specializing in company profile research for top Indian companies listed on the NIFTY 100 index, do real-time search, conduct a thorough web search to extract all relevant information about the specified company without omitting or altering any details.\n\nGiven the following JSON structure, adhere to these rules:\n1. Preserve all keys exactly as they appear.\n3. Do not remove or modify any existing keys or their values.\n4. Ensure each key in the JSON has a value.\n5. Provide the final output strictly in JSON format with no extra commentary or explanation before or after.\n\nThe output should be strictly in JSON format:\n{\n  \"Company_detail\": {\n    \"Company_Name\": \"\",\n    \"Basic_Overview\": {\n      \"Legal_Name\": \"\",\n      \"Type_Of_Entity\": \"\",\n      \"Traded_As\": {\n        \"Bombay_Stock_Exchange_BSE\": \"\",\n        \"National_Stock_Exchange_NSE\": \"\",\n        \"International_Securities_Identification_Number_ISIN\": \"\",\n        \"Ticker_Symbol\": \"\"\n      },\n      \"Industry\": \"\",\n      \"Sector\": \"\",\n      \"Year_Founded\": \"\",\n      \"Founders\": [\n        {\n          \"Name\": \"\",\n          \"Role\": \"\",\n          \"Bio\": \"\"\n        }\n      ],\n      \"Headquarters\": {\n        \"Address\": \"\",\n        \"City\": \"\",\n        \"State\": \"\",\n        \"Country\": \"\",\n        \"Contact_Details\": {\n          \"Phone\": \"\",\n          \"Fax\": \"\",\n          \"Email\": \"\",\n          \"Website\": \"\"\n        }\n      },\n      \"Key_People\": [\n        {\n          \"Name\": \"\",\n          \"Position\": \"\",\n          \"Bio\": \"\",\n          \"Tenure\": \"\",\n          \"Previous_Experience\": [],\n          \"Education\": []\n        }\n      ],\n      \"Mission_And_Vision\": {\n        \"Mission\": \"\",\n        \"Vision\": \"\"\n      },\n      \"Values\": [],\n      \"Tags\": []\n    },\n    \"Business_Segments\": {\n      \"Segment_Name\": \"\",\n      \"Description\": \"\",\n      \"Products_And_Services\": [\n        {\n          \"Product_Name\": \"\",\n          \"Description\": \"\",\n          \"Target_Clients\": [],\n          \"Pricing_Model\": \"\",\n          \"Distribution_Channels\": [],\n          \"Competitors\": []\n        }\n      ],\n      \"Sub_Segments\": [\n        {\n          \"Sub_Segment_Name\": \"\",\n          \"Description\": \"\",\n          \"Products\": []\n        }\n      ],\n      \"Key_Performance_Indicators\": [\n        {\n          \"KPI_Name\": \"\",\n          \"Value\": \"\",\n          \"Unit\": \"\"\n        }\n      ],\n      \"Market_Share\": \"\",\n      \"Growth_Rate\": \"\",\n      \"Revenue_Contribution\": \"\",\n      \"Operational_Regions\": []\n    },\n    \"Corporate_Structure\": {\n      \"Market_Capitalization\": \"\",\n      \"Enterprise_Value\": \"\",\n      \"Shareholding\": {\n        \"Promoters\": \"\",\n        \"Mutual_Funds\": \"\",\n        \"Foreign_Institutional_Investors\": \"\",\n        \"Individuals\": \"\",\n        \"Corporate_Bodies\": \"\",\n        \"Others\": \"\"\n      },\n      \"Subsidiaries\": [\n        {\n          \"Name\": \"\",\n          \"Business_Focus\": \"\",\n          \"Ownership_Percentage\": \"\",\n          \"Financial_Contribution\": \"\",\n          \"Divisions\": [\n            {\n              \"Division_Name\": \"\",\n              \"Products\": []\n            }\n          ]\n        }\n      ],\n      \"Joint_Ventures\": [\n        {\n          \"Name\": \"\",\n          \"Partners\": [],\n          \"Ownership_Percentage\": \"\",\n          \"Purpose\": \"\"\n        }\n      ],\n      \"Affiliates\": [],\n      \"Related_Parties\": []\n    },\n    \"Financial_Highlights\": {\n      \"Latest_Financials\": {\n        \"Currency\": \"INR\",\n        \"Revenue\": {\n          \"Amount\": \"\",\n          \"Unit\": \"Crore\"\n        },\n        \"Gross_Profit\": \"\",\n        \"Operating_Income\": \"\",\n        \"Net_Income\": {\n          \"Amount\": \"\",\n          \"Unit\": \"Crore\"\n        },\n        \"AUM\": {\n          \"Total_AUM\": \"\",\n          \"Unit\": \"Crore\"\n        },\n        \"EPS\": \"\",\n        \"Debt_To_Equity_Ratio\": \"\",\n        \"Cash_Flow\": {\n          \"Operating_Cash_Flow\": \"\",\n          \"Investing_Cash_Flow\": \"\",\n          \"Financing_Cash_Flow\": \"\"\n        },\n        \"Net_Worth\": \"\",\n        \"Return_On_Equity\": \"\",\n        \"Return_On_Assets\": \"\",\n        \"Number_Of_Employees\": \"\"\n      },\n      \"Custom_Metrics\": [\n        {\n          \"Metric_Name\": \"\",\n          \"Value\": \"\",\n          \"Unit\": \"\"\n        }\n      ],\n      \"Growth_And_Profit_Drivers\": [\n        {\n          \"Segment\": \"\",\n          \"Drivers\": []\n        }\n      ],\n      \"Historical_Financial_Data\": [\n        {\n          \"Year\": \"\",\n          \"Revenue\": \"\",\n          \"Net_Income\": \"\",\n          \"EPS\": \"\",\n          \"Dividends\": \"\"\n        }\n      ],\n      \"Financial_Ratios\": [\n        {\n          \"Ratio_Name\": \"\",\n          \"Value\": \"\"\n        }\n      ]\n    },\n    \"Company_History\": {\n      \"History_And_Timeline\": [\n        {\n          \"Year\": \"\",\n          \"Event\": \"\",\n          \"Impact\": \"\",\n          \"Milestone_Type\": \"\"\n        }\n      ]\n    },\n    \"Acquisitions_And_Partnerships\": {\n      \"Acquisitions\": [\n        {\n          \"Company_Name\": \"\",\n          \"Year\": \"\",\n          \"Reason\": \"\",\n          \"Cost\": \"\",\n          \"Outcome\": \"\",\n          \"Impact_On_Business\": \"\"\n        }\n      ],\n      \"Partnerships\": [\n        {\n          \"Partner_Name\": \"\",\n          \"Year\": \"\",\n          \"Purpose\": \"\",\n          \"Outcome\": \"\",\n          \"Duration\": \"\"\n        }\n      ]\n    },\n    \"Operations_And_Strategies\": {\n      \"Digitization_And_Tech_Investments\": [],\n      \"Geographic_Expansion\": [],\n      \"Sustainability_Initiatives\": [],\n      \"Strategic_Initiatives\": [\n        {\n          \"Initiative_Name\": \"\",\n          \"Description\": \"\",\n          \"Expected_Impact\": \"\",\n          \"Status\": \"\"\n        }\n      ],\n      \"Business_Continuity_Plans\": [],\n      \"Supply_Chain_Management\": []\n    }\t\n    \"SWOT_Analysis\": {\n\t\t\"Strengths\": [],\n\t\t\"Weaknesses\": [],\n\t\t\"Opportunities\": [],\n\t\t\"Threats\": []\n      },\n\t\n     \"Controversies_And_Legal_Issues\": {\n\t\t\"Issue\": \"\",\n\t\t\"Summary\": \"\",\n\t\t\"Regulatory_Action\": \"\",\n\t\t\"Outcome\": \"\",\n\t\t\"Status\": \"\",\n\t\t\"Impact_On_Reputation\": \"\"\n      },\n      \"Awards_And_Recognitions\": {\n\t\t\"Award_Name\": \"\",\n\t\t\"Category\": \"\",\n\t\t\"Year\": \"\",\n\t\t\"Reason\": \"\",\n\t\t\"Issuer\": \"\",\n\t\t\"Significance\": \"\"\n      },\n      \"Strategic_And_Market_Position\": {\n\t\t\"Investment_Philosophy\": \"\",\n\t\t\"Distribution_Network\": \"\",\n\t\t\"Target_Clientele\": \"\",\n\t\t\"Competitive_Advantage\": [],\n\t\t\"Market_Position\": \"\",\n\t\t\"Branding_Strategy\": \"\"\n      },\n      \"Recent_Strategic_Focus_And_Outlook\": {\n\t\t\"Digitization_And_Technology\": [],\n\t\t\"Growth_Plans\": [],\n\t\t\"Expansion_Strategies\": [],\n\t\t\"Market_Outlook\": \"\",\n\t\t\"Management_Guidance\": \"\",\n\t\t\"Risks_And_Challenges\": []\n      },\n      \"Conclusion\": {\n\t\t\"Summary_of_company_info\": \"\",\n      }\n\t\n\t\n  }\n}"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.7,
+      "position": [
+        1760,
+        -280
+      ],
+      "id": "8037090f-648c-4b8f-b790-0682249b6c40",
+      "name": "Brand Profiling "
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "b375b9b1-1d9a-4bed-8737-4f1fb6cdb253",
+              "name": "output",
+              "value": "={{ $('Brand Profiling ').item.json.output }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        2080,
+        -280
+      ],
+      "id": "b241dc7c-89fb-4642-a788-771952ec7eba",
+      "name": "Brand_Profiling_Output"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Get the input data\nconst items = $input.all();\n\n// Process each item\nconst result = items.map(item => {\n    try {\n        // Extract the raw output string\n        let rawOutput = item.json.output;\n\n        // Remove markdown-style JSON code blocks if present\n        rawOutput = rawOutput.replace(/^```json\\s*/g, \"\").replace(/```$/g, \"\").trim();\n\n        // Parse the corrected JSON string\n        const parsedOutput = JSON.parse(rawOutput);\n\n        // Return the corrected JSON structure\n        return {\n            json: {\n                output: parsedOutput\n            }\n        };\n    } catch (error) {\n        return {\n            json: {\n                error: \"Parsing failed\",\n                message: error.message\n            }\n        };\n    }\n});\n\n// Return the processed items\nreturn result;\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2280,
+        -280
+      ],
+      "id": "b79a2756-be70-46de-909a-19c9a09f67b2",
+      "name": "Brand_Profiling_Output TO JSON Format"
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "seconds"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -3080,
+        140
+      ],
+      "id": "12185e41-2180-4427-97aa-69bc66829d1c",
+      "name": "Schedule Trigger"
+    },
+    {
+      "parameters": {
+        "model": "google/gemini-2.0-flash-001",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenRouter",
+      "typeVersion": 1,
+      "position": [
+        -2180,
+        340
+      ],
+      "id": "35d0f23e-4c6f-478b-b2a7-95b000ded995",
+      "name": "OpenRouter Chat Model",
+      "credentials": {
+        "openRouterApi": {
+          "id": "vJsXY1iYPQ5FRUqd",
+          "name": "OpenRouter account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "65d607d4-47a2-48e7-8c04-009afd223699",
+              "leftValue": "={{ $json.title }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            },
+            {
+              "id": "761ca482-34cb-41e1-b77f-f85cab6e1e17",
+              "leftValue": "={{ $json.response }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            },
+            {
+              "id": "04899930-6f68-404c-98dd-3efd1d9a736f",
+              "leftValue": "={{ $json.summary }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "empty",
+                "singleValue": true
+              }
+            },
+            {
+              "id": "d845c449-7c1e-4d18-b873-cdf7af3e1de2",
+              "leftValue": "={{ $json.summary }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "empty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 2.2,
+      "position": [
+        -100,
+        1500
+      ],
+      "id": "d71c92d7-b85d-4d45-8ae4-eab5bed5e350",
+      "name": "Filter1",
+      "disabled": true
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -660,
+        -2260
+      ],
+      "id": "8b0f7968-5c6f-4d22-96ca-a80a39127f12",
+      "name": "When clicking ‘Test workflow’",
+      "disabled": true
+    },
+    {
+      "parameters": {
+        "jsCode": "// Loop over input items and clean text fields\nconst cleanedItems = $input.all().map(item => {\n    const cleanedJson = {};\n\n    // Iterate through all keys in the item JSON\n    for (const [key, value] of Object.entries(item.json)) {\n        if (typeof value === 'string') {\n            let cleanedValue = value;\n\n            // Remove all escaped newline characters (\\n or \\\\n)\n            cleanedValue = cleanedValue.replace(/\\\\n|\\n/g, ' ').trim();\n\n            // // Remove inline citations like [1], [2], etc.\n            // cleanedValue = cleanedValue.replace(/\\[\\d+\\]/g, '').trim();\n\n            // Remove curly brackets '{' and '}'\n            cleanedValue = cleanedValue.replace(/[{}]/g, '').trim();\n\n            // Remove all double quotes (\")\n            cleanedValue = cleanedValue.replace(/\"/g, '').trim();\n\n            cleanedJson[key] = cleanedValue;\n        } else {\n            cleanedJson[key] = value;\n        }\n    }\n\n    return { json: cleanedJson };\n});\n\nreturn cleanedItems;\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1160,
+        -40
+      ],
+      "id": "1a8c3824-dc93-4e89-844a-53123a3b78e6",
+      "name": "Cleaning code Node before Brand Profiling_2"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Combine all mergedText fields from input items into one combined string with line breaks\n\nlet combinedText = '';\n\nfor (const item of $input.all()) {\n    const text = item.json.mergedText || '';\n    combinedText += text + '\\n';  // Add newline separator\n}\n\ncombinedText = combinedText.trim();  // Clean up trailing newlines\n\nreturn [{ json: { mergedText: combinedText } }];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1580,
+        -280
+      ],
+      "id": "f5f50bb7-33b0-49b1-95a6-4e05db0a1f6d",
+      "name": "Merge Both Clean Text"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "641ff939-c60e-452f-b2d1-a1344a5e4197",
+              "leftValue": "={{ $json.summary }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -880,
+        -80
+      ],
+      "id": "861b1c06-162c-48b4-b140-c8f842e53a1e",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "2e39ab76-a63b-45b5-8409-ecfca61feb09",
+              "name": "mergedText_1",
+              "value": "={{ $('Cleaning code node before brand profiling_1').first().json.mergedText }}",
+              "type": "string"
+            },
+            {
+              "id": "fd01c990-ec2e-48b6-807e-088e9c8bfdef",
+              "name": "mergedText_2",
+              "value": "={{ $('Cleaning code Node before Brand Profiling_2').first().json.mergedText }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -960,
+        -2240
+      ],
+      "id": "61015102-c063-49af-99de-89cd7bfce168",
+      "name": "Edit Fields",
+      "executeOnce": false,
+      "disabled": true
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.1,
+      "position": [
+        1400,
+        -280
+      ],
+      "id": "1f04bac6-c6a2-4b87-a199-0e56077372b9",
+      "name": "Merge"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        -1380,
+        80
+      ],
+      "id": "fc58ac48-e8eb-42d7-9e75-bf8e94aca6fe",
+      "name": "Loop Over Items - 2"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        -2580,
+        140
+      ],
+      "id": "a62a783c-2a75-44bf-ae86-02c3b72e4a54",
+      "name": "Loop Over Items - 1"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Loop over input items and clean text fields\nconst cleanedItems = $input.all().map(item => {\n    const cleanedJson = {};\n\n    // Iterate through all keys in the item JSON\n    for (const [key, value] of Object.entries(item.json)) {\n        if (typeof value === 'string') {\n            let cleanedValue = value;\n\n            // Remove all escaped newline characters (\\n or \\\\n)\n            cleanedValue = cleanedValue.replace(/\\\\n|\\n/g, ' ').trim();\n\n            // // Remove inline citations like [1], [2], etc.\n            // cleanedValue = cleanedValue.replace(/\\[\\d+\\]/g, '').trim();\n\n            // Remove curly brackets '{' and '}'\n            cleanedValue = cleanedValue.replace(/[{}]/g, '').trim();\n\n            // Remove all double quotes (\")\n            cleanedValue = cleanedValue.replace(/\"/g, '').trim();\n\n            cleanedJson[key] = cleanedValue;\n        } else {\n            cleanedJson[key] = value;\n        }\n    }\n\n    return { json: cleanedJson };\n});\n\nreturn cleanedItems;\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        80,
+        -300
+      ],
+      "id": "12c1d845-c25d-49d6-95eb-0339b9435b36",
+      "name": "Cleaning code node before brand profiling_1"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Loop over input items and add a new field called 'passesFilter' to each one\nfor (const item of $input.all()) {\n  const json = item.json;\n\n  const passesFilter =\n    json.title !== null &&\n    json.response !== null &&\n    (json.summary === '' || json.summary === null);\n\n  json.passesFilter = passesFilter;\n}\n\nreturn $input.all();\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -440,
+        120
+      ],
+      "id": "cf8c6aeb-a491-45ca-b7a1-b3bb0b61d029",
+      "name": "PassesFilter",
+      "executeOnce": true
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "5664db9b-2f28-4ef2-9367-d4d0e5e9d457",
+              "name": "title",
+              "value": "={{ $json.title }}",
+              "type": "string"
+            },
+            {
+              "id": "dfe1c0bd-b754-420b-8b48-03c2ded3ce32",
+              "name": "response",
+              "value": "={{ $json.response }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -160,
+        120
+      ],
+      "id": "746aef49-f160-48d9-b776-f6b3066e7ef2",
+      "name": "Select Company Name and Website - 2  "
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "af7d53ea-2757-4116-9e40-b9a4b55ca49c",
+              "name": "Company Name",
+              "value": "={{ $json['Company Name'] }}",
+              "type": "string"
+            },
+            {
+              "id": "47705627-bb4e-4ce4-9b40-76eae39f4a42",
+              "name": "Industry",
+              "value": "={{ $json.Industry }}",
+              "type": "string"
+            },
+            {
+              "id": "096e279a-7359-4aba-abb8-24392bea9959",
+              "name": "ISIN Code",
+              "value": "={{ $json['ISIN Code'] }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -2360,
+        160
+      ],
+      "id": "f58b8f20-ec04-447c-be49-61bf4c96a22c",
+      "name": "Select Company Name and Website - 1"
+    },
+    {
+      "parameters": {
+        "url": "http://192.168.1.242:8000/get_article/",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "title_str",
+              "value": "={{ $json.topic }}"
+            },
+            {
+              "name": "response_str",
+              "value": "={{ $json.purpose }}"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "accept",
+              "value": "application/json"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -860,
+        100
+      ],
+      "id": "ef656553-2b3f-44a7-b604-0a03ced93876",
+      "name": "STORM API - 1",
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        120,
+        120
+      ],
+      "id": "dd42a2bb-00a7-490f-99b9-a258bb74c75d",
+      "name": "Loop Over Items - 3"
+    },
+    {
+      "parameters": {
+        "url": "http://192.168.1.242:8000/get_article/",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "title_str",
+              "value": "={{ $json.title }}"
+            },
+            {
+              "name": "response_str",
+              "value": "={{ $json.response }}"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "accept",
+              "value": "application/json"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        340,
+        220
+      ],
+      "id": "315bb97c-61d0-4850-9b2a-fb19dee75755",
+      "name": "STORM API - 2",
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "5664db9b-2f28-4ef2-9367-d4d0e5e9d457",
+              "name": "title",
+              "value": "={{ $('STORM API - 1').item.json.title }}",
+              "type": "string"
+            },
+            {
+              "id": "dfe1c0bd-b754-420b-8b48-03c2ded3ce32",
+              "name": "response",
+              "value": "={{ $('STORM API - 1').item.json.response }}",
+              "type": "string"
+            },
+            {
+              "id": "3aa64b9f-c7c9-40dd-a328-798ae83efbd3",
+              "name": "summary",
+              "value": "={{ $('STORM API - 1').item.json.summary }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -1060,
+        -80
+      ],
+      "id": "73d2f119-b44c-4b36-aabf-f3fdd48c44d3",
+      "name": "Title/Response/Summary - 1 "
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "5664db9b-2f28-4ef2-9367-d4d0e5e9d457",
+              "name": "title",
+              "value": "={{ $('Loop Over Items - 3').item.json.title }}",
+              "type": "string"
+            },
+            {
+              "id": "dfe1c0bd-b754-420b-8b48-03c2ded3ce32",
+              "name": "response",
+              "value": "={{ $('Loop Over Items - 3').item.json.response }}",
+              "type": "string"
+            },
+            {
+              "id": "3aa64b9f-c7c9-40dd-a328-798ae83efbd3",
+              "name": "summary",
+              "value": "={{ $('Loop Over Items - 3').item.json.summary }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        340,
+        -40
+      ],
+      "id": "527c3031-58ca-4832-8456-bb59fb15bab9",
+      "name": "Title/Response/Summary - 2"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "65d607d4-47a2-48e7-8c04-009afd223699",
+              "leftValue": "={{ $json.title }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            },
+            {
+              "id": "761ca482-34cb-41e1-b77f-f85cab6e1e17",
+              "leftValue": "={{ $json.response }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            },
+            {
+              "id": "04899930-6f68-404c-98dd-3efd1d9a736f",
+              "leftValue": "={{ $json.summary }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "empty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 2.2,
+      "position": [
+        580,
+        -40
+      ],
+      "id": "a476d0b7-9499-4a9e-9313-e36bd06fe233",
+      "name": "Filter"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Initialize an empty string to hold the concatenated result\nlet mergedResult = \"\";\n\n// Loop through all input items\nfor (const item of $input.all()) {\n    // Concatenate the fields title, response, and summary for each item\n    mergedResult += item.json.title + \" \" + item.json.response + \" \" + item.json.summary + \" \";\n}\n\n// Set the concatenated result to a new field in the output\nreturn [{\n    json: {\n        mergedText: mergedResult.trim()  // Trim to remove any extra space at the end\n    }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        900,
+        -40
+      ],
+      "id": "19127d3b-7074-45b2-9798-a00fe90f98c1",
+      "name": "Merging entire text before brand profiling result - 2"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Initialize an empty string to hold the concatenated result\nlet mergedResult = \"\";\n\n// Loop through all input items\nfor (const item of $input.all()) {\n    // Concatenate the fields title, response, and summary for each item\n    mergedResult += item.json.title + \" \" + item.json.response + \" \" + item.json.summary + \" \";\n}\n\n// Set the concatenated result to a new field in the output\nreturn [{\n    json: {\n        mergedText: mergedResult.trim()  // Trim to remove any extra space at the end\n    }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -140,
+        -300
+      ],
+      "id": "1eca4c74-f780-4cf5-8a82-26da99f87b10",
+      "name": "Merging entire text before brand profiling result - 1"
+    },
+    {
+      "parameters": {
+        "model": "perplexity/llama-3.1-sonar-small-128k-online",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenRouter",
+      "typeVersion": 1,
+      "position": [
+        1740,
+        -100
+      ],
+      "id": "87dfa1d2-a168-4e36-b876-a5e2324e7d01",
+      "name": "OpenRouter Chat Model 2",
+      "credentials": {
+        "openRouterApi": {
+          "id": "vJsXY1iYPQ5FRUqd",
+          "name": "OpenRouter account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "schema": {
+          "__rl": true,
+          "value": "public",
+          "mode": "list",
+          "cachedResultName": "public"
+        },
+        "table": {
+          "__rl": true,
+          "value": "companies_details",
+          "mode": "list",
+          "cachedResultName": "companies_details"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "company_info": "={{ $('Cleaning code node before brand profiling_1').first().json.mergedText }}",
+            "company_name": "={{ $json.output.Company_detail.Company_Name }}",
+            "basic_overview": "={{ $json.output.Company_detail.Basic_Overview }}",
+            "business_segments": "={{ $json.output.Company_detail.Business_Segments }}",
+            "corporate_structure": "={{ $json.output.Company_detail.Corporate_Structure }}",
+            "financialhighlights": "={{ $json.output.Company_detail.Financial_Highlights }}",
+            "historyandtimeline": "={{ $json.output.Company_detail.Company_History }}",
+            "acquisitionsandpartnerships": "={{ $json.output.Company_detail.Acquisitions_And_Partnerships }}",
+            "operationsandstrategies": "={{ $json.output.Company_detail.Operations_And_Strategies }}",
+            "swotanalysis": "={{ $json.output.Company_detail.SWOT_Analysis }}",
+            "controversiesandlegalissues": "={{ $json.output.Company_detail.Controversies_And_Legal_Issues }}",
+            "awardsandrecognitions": "={{ $json.output.Company_detail.Awards_And_Recognitions }}",
+            "strategicandmarketposition": "={{ $json.output.Company_detail.Strategic_And_Market_Position }}",
+            "recentstrategicfocusandoutlook": "={{ $json.output.Company_detail.Recent_Strategic_Focus_And_Outlook }}",
+            "conclusion": "={{ $json.output.Company_detail.Conclusion }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "company_id",
+              "displayName": "company_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "metadata_id",
+              "displayName": "metadata_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "company_info",
+              "displayName": "company_info",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "company_name",
+              "displayName": "company_name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "basic_overview",
+              "displayName": "basic_overview",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "object",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "business_segments",
+              "displayName": "business_segments",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "object",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "corporate_structure",
+              "displayName": "corporate_structure",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "object",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "financialhighlights",
+              "displayName": "financialhighlights",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "object",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "historyandtimeline",
+              "displayName": "historyandtimeline",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "object",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "acquisitionsandpartnerships",
+              "displayName": "acquisitionsandpartnerships",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "object",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "operationsandstrategies",
+              "displayName": "operationsandstrategies",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "object",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "swotanalysis",
+              "displayName": "swotanalysis",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "object",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "controversiesandlegalissues",
+              "displayName": "controversiesandlegalissues",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "object",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "awardsandrecognitions",
+              "displayName": "awardsandrecognitions",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "object",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "strategicandmarketposition",
+              "displayName": "strategicandmarketposition",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "object",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "recentstrategicfocusandoutlook",
+              "displayName": "recentstrategicfocusandoutlook",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "object",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "conclusion",
+              "displayName": "conclusion",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "object",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [
+        2480,
+        -280
+      ],
+      "id": "3d1f2565-d82d-473a-9a61-19f8e72a65bf",
+      "name": "Insert Data To Company_Details ",
+      "credentials": {
+        "postgres": {
+          "id": "RtUnZdI3lT4wKYRL",
+          "name": "Local PostgreSQL"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1z7vW9tveIYEanNcEEXzpfcnQi3fQrmPn5nw0DjupoB4",
+          "mode": "list",
+          "cachedResultName": "NIFTY 100",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1z7vW9tveIYEanNcEEXzpfcnQi3fQrmPn5nw0DjupoB4/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 2137939227,
+          "mode": "list",
+          "cachedResultName": "ind_nifty100list",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1z7vW9tveIYEanNcEEXzpfcnQi3fQrmPn5nw0DjupoB4/edit#gid=2137939227"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        -2820,
+        140
+      ],
+      "id": "be40c200-f272-42af-8f8d-f9ffe04697ad",
+      "name": "Google Sheets",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "DGSDE9AyNVaScfZd",
+          "name": "Google Sheets account"
+        }
+      }
+    }
+  ],
+  "pinData": {
+    "Title and Response Generate": [
+      {
+        "json": {
+          "output": "```json\n[\n  {\n    \"topic\": \"ABB India Ltd. Basic Overview Latest\",\n    \"purpose\": \"To provide a general understanding of ABB India's profile and activities.\"\n  },\n  {\n    \"topic\": \"ABB India Ltd.: Mission, Vision, and Values Future Outlook\",\n    \"purpose\": \"To outline ABB India's guiding principles and strategic aspirations.\"\n  },\n  {\n    \"topic\": \"Leadership Strategies of Key Executives at ABB India Ltd. \",\n    \"purpose\": \"To analyze leadership approaches and decision-making within ABB India.\"\n  },\n  {\n    \"topic\": \"ABB India Ltd. Corporate Governance and Compliance Latest\",\n    \"purpose\": \"To evaluate ABB India's adherence to ethical and regulatory standards.\"\n  },\n  {\n    \"topic\": \"Ownership and Shareholding Patterns of ABB India Ltd. \",\n    \"purpose\": \"To identify major stakeholders and ownership dynamics of ABB India.\"\n  },\n  {\n    \"topic\": \"Subsidiaries and Joint Ventures of ABB India Ltd. \",\n    \"purpose\": \"To list key partnerships and subsidiary companies under ABB India.\"\n  },\n  {\n    \"topic\": \"Business Segments and Operational Divisions of ABB India Ltd. \",\n    \"purpose\": \"To delineate ABB India's organizational structure and key business areas.\"\n  },\n  {\n    \"topic\": \"ABB India Ltd. Revenue Breakdown by Business Segments Latest\",\n    \"purpose\": \"To detail ABB India's financial performance across its various sectors.\"\n  },\n  {\n    \"topic\": \"Product and Service Portfolio Overview of ABB India Ltd. \",\n    \"purpose\": \"To summarize ABB India's range of offerings in the capital goods sector.\"\n  },\n  {\n    \"topic\": \"Market Share/Competitive Positioning of ABB India Ltd. Future Outlook\",\n    \"purpose\": \"To assess ABB India's market dominance and competitive landscape.\"\n  },\n  {\n    \"topic\": \"Growth Rate and Performance Metrics of ABB India Ltd. \",\n    \"purpose\": \"To evaluate ABB India's key indicators of growth and efficiency.\"\n  },\n  {\n    \"topic\": \"Operational Footprint, Global Expansion Plans of ABB India Ltd. \",\n    \"purpose\": \"To map ABB India's worldwide locations and growth strategies.\"\n  },\n  {\n    \"topic\": \"Revenue, Profit, and Net Income Trends of ABB India Ltd. \",\n    \"purpose\": \"To track ABB India's financial trends over a period.\"\n  },\n  {\n    \"topic\": \"Financial Ratios and Key Performance Metrics of ABB India Ltd. \",\n    \"purpose\": \"To examine ABB India's financial stability through ratio analysis.\"\n  },\n  {\n    \"topic\": \"Debt-to-Equity, ROA, and EPS Analysis of ABB India Ltd. \",\n    \"purpose\": \"To assess ABB India's capital structure with financial indicators.\"\n  },\n  {\n    \"topic\": \"Custom Financial Metrics and Growth Drivers of ABB India Ltd. \",\n    \"purpose\": \"To determine ABB India's financial strengths.\"\n  },\n  {\n    \"topic\": \"Major Acquisitions and Mergers of ABB India Ltd. \",\n    \"purpose\": \"To list milestones impacting ABB India’s structure.\"\n  },\n  {\n    \"topic\": \"Strategic Alliances and Joint Ventures of ABB India Ltd. \",\n    \"purpose\": \"To highlight collaborations enhancing ABB India’s capabilities.\"\n  },\n  {\n    \"topic\": \"M&A and Partnership Impact on Business Performance of ABB India Ltd.\",\n    \"purpose\": \"To assess the effect of strategic alliances on ABB India.\"\n  },\n  {\n    \"topic\": \"Digital Transformation and Technology Investments of ABB India Ltd.\",\n    \"purpose\": \"To describe ABB India's commitment to digital advancement.\"\n  },\n  {\n    \"topic\": \"Automation and AI Integration Strategies of ABB India Ltd. \",\n    \"purpose\": \"To detail ABB India's use of automation and AI for efficiency.\"\n  },\n  {\n    \"topic\": \"ABB India Ltd. R&D Initiatives and Innovation Strategy in Future\",\n    \"purpose\": \"To explore ABB India’s investment in future technologies.\"\n  },\n  {\n    \"topic\": \"Environmental and Social Responsibility Initiatives of ABB India Ltd.\",\n    \"purpose\": \"To report ABB India's initiatives for social responsibility.\"\n  },\n  {\n    \"topic\": \"ABB India Ltd. Corporate Sustainability Goals Latest\",\n    \"purpose\": \"To define ABB India's objectives for environmental sustainability.\"\n  },\n  {\n    \"topic\": \"ABB India Ltd. ESG Compliance and Sustainability Impact\",\n    \"purpose\": \"To measure ABB India's compliance with ESG standards.\"\n  },\n  {\n    \"topic\": \"Domestic and Global Expansion Strategies of ABB India Ltd latest\",\n    \"purpose\": \"To analyze ABB India’s geographical growth plans.\"\n  },\n  {\n    \"topic\": \"Investment Strategies and Market Outlook of ABB India Ltd. \",\n    \"purpose\": \"To examine ABB India's approach to investment and market foresight.\"\n  },\n  {\n    \"topic\": \"Risk Management and Future Challenges of ABB India Ltd. \",\n    \"purpose\": \"To assess ABB India's strategies for overcoming challenges.\"\n  },\n  {\n    \"topic\": \"SWOT Analysis of ABB India Ltd.: Strengths, Weaknesses, Opportunities, Threats\",\n    \"purpose\": \"To provide a SWOT analysis impacting ABB India’s strategies.\"\n  },\n  {\n    \"topic\": \"Industry and Competitor Benchmarking like Market Position of ABB India Ltd.\",\n    \"purpose\": \"To compare ABB India against its competition.\"\n  },\n  {\n    \"topic\": \"Competitive Strategy like Brand Positioning and Differentiation of ABB India Ltd.\",\n    \"purpose\": \"To analyze ABB India's strategy to stand out in the market.\"\n  },\n  {\n    \"topic\": \"Compliance Trends like Regulatory and Legal Challenges of ABB India Ltd\",\n    \"purpose\": \"To assess ABB India's conformance with legal standards.\"\n  },\n  {\n    \"topic\": \"Past Controversies and Resolutions of ABB India Ltd.\",\n    \"purpose\": \"To report important controversies and how they were resolved.\"\n  },\n  {\n    \"topic\": \"Financial and Corporate Laws Compliance of ABB India Ltd. \",\n    \"purpose\": \"To evaluate ABB India's adherence to applicable laws.\"\n  },\n  {\n    \"topic\": \"Industry Awards and Certifications of ABB India Ltd. \",\n    \"purpose\": \"To recognize ABB India's achievements and certifications.\"\n  },\n  {\n    \"topic\": \"Recognition for Innovation and Leadership of ABB India Ltd. \",\n    \"purpose\": \"To highlight awards ABB India has received for leadership.\"\n  },\n  {\n    \"topic\": \"Brand Reputation and Equity of ABB India Ltd. \",\n    \"purpose\": \"To measure how ABB India's brand is perceived by stakeholders.\"\n  },\n  {\n    \"topic\": \"Long-Term Corporate Vision and Strategic Goals of ABB India Ltd. \",\n    \"purpose\": \"To outline ABB India's strategic direction for the coming years.\"\n  },\n  {\n    \"topic\": \"Business Growth Plans like Strategic Roadmap of ABB India Ltd. \",\n    \"purpose\": \"To map out ABB India's plans for business growth.\"\n  },\n  {\n    \"topic\": \"Investment Trends and Financial Challenges of ABB India Ltd. \",\n    \"purpose\": \"To examine financial hurdles ABB India may face.\"\n  },\n  {\n    \"topic\": \"ABB India Ltd. Adoption of AI, Blockchain, and Cloud Technologies\",\n    \"purpose\": \"To describe ABB India's use of transformative technologies.\"\n  },\n  {\n    \"topic\": \"Digital Transformation and Operational Efficiency of ABB India Ltd. \",\n    \"purpose\": \"To boost ABB India's efficiency levels.\"\n  },\n  {\n    \"topic\": \"IT Infrastructure and Automation Investments of ABB India Ltd. \",\n    \"purpose\": \"To detail ABB India's expenditure on IT improvement.\"\n  },\n  {\n    \"topic\": \"Cybersecurity Strategies, Data Protection Measures of ABB India Ltd. \",\n    \"purpose\": \"To secure digital assets and data of ABB India.\"\n  },\n  {\n    \"topic\": \"Technology-Driven Customer Experience Innovations of ABB India Ltd.\",\n    \"purpose\": \"To identify ABB India's novel approaches to serve customers.\"\n  },\n  {\n    \"topic\": \"Revenue Growth Drivers and M&A Impact of ABB India Ltd.\",\n    \"purpose\": \"To outline the key areas boosting ABB India's revenue.\"\n  },\n  {\n    \"topic\": \"Market Entry and Supply Chain Growth like Expansion Strategies of ABB India Ltd\",\n    \"purpose\": \"To expand ABB India’s market and strengthen its supply routes.\"\n  },\n  {\n    \"topic\": \"Market Outlook, Competitive Positioning of ABB India Ltd. Future\",\n    \"purpose\": \"To project ABB India's prospective position in the market.\"\n  },\n  {\n    \"topic\": \"CEO Strategy and Investor Insights like Management Guidance of ABB India Ltd.\",\n    \"purpose\": \"To clarify ABB India's strategic direction set by top management.\"\n  },\n  {\n    \"topic\": \"Compliance, Cybersecurity, and Market Uncertainty Risks/Challenges of ABB India Ltd\",\n    \"purpose\": \"To evaluate the future risks facing ABB India.\"\n  }\n]\n```"
+        }
+      }
+    ]
+  },
+  "connections": {
+    "Cleaning Node": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items - 2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Title and Response Generate": {
+      "main": [
+        [
+          {
+            "node": "Cleaning Node",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Drive": {
+      "main": [
+        [
+          {
+            "node": "Extract from File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract from File": {
+      "main": [
+        []
+      ]
+    },
+    "Brand Profiling ": {
+      "main": [
+        [
+          {
+            "node": "Brand_Profiling_Output",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Brand_Profiling_Output": {
+      "main": [
+        [
+          {
+            "node": "Brand_Profiling_Output TO JSON Format",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Brand_Profiling_Output TO JSON Format": {
+      "main": [
+        [
+          {
+            "node": "Insert Data To Company_Details ",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Google Sheets",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenRouter Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Title and Response Generate",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter1": {
+      "main": [
+        []
+      ]
+    },
+    "When clicking ‘Test workflow’": {
+      "main": [
+        []
+      ]
+    },
+    "Cleaning code Node before Brand Profiling_2": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Merge Both Clean Text": {
+      "main": [
+        [
+          {
+            "node": "Brand Profiling ",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Merging entire text before brand profiling result - 1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "PassesFilter",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields": {
+      "main": [
+        []
+      ]
+    },
+    "Merge": {
+      "main": [
+        [
+          {
+            "node": "Merge Both Clean Text",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Over Items - 2": {
+      "main": [
+        [
+          {
+            "node": "Title/Response/Summary - 1 ",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "STORM API - 1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Over Items - 1": {
+      "main": [
+        [],
+        [
+          {
+            "node": "Select Company Name and Website - 1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Cleaning code node before brand profiling_1": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "PassesFilter": {
+      "main": [
+        [
+          {
+            "node": "Select Company Name and Website - 2  ",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Select Company Name and Website - 2  ": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items - 3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Select Company Name and Website - 1": {
+      "main": [
+        [
+          {
+            "node": "Title and Response Generate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "STORM API - 1": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items - 2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Over Items - 3": {
+      "main": [
+        [
+          {
+            "node": "Title/Response/Summary - 2",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "STORM API - 2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "STORM API - 2": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items - 3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Title/Response/Summary - 1 ": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Title/Response/Summary - 2": {
+      "main": [
+        [
+          {
+            "node": "Filter",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter": {
+      "main": [
+        [
+          {
+            "node": "Merging entire text before brand profiling result - 2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merging entire text before brand profiling result - 2": {
+      "main": [
+        [
+          {
+            "node": "Cleaning code Node before Brand Profiling_2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merging entire text before brand profiling result - 1": {
+      "main": [
+        [
+          {
+            "node": "Cleaning code node before brand profiling_1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenRouter Chat Model 2": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Brand Profiling ",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Sheets": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items - 1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "5007fcfd-1ee2-4cd8-ba89-6064fced71d3",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "558d88703fb65b2d0e44613bc35916258b0f0bf983c5d4730c00c424b77ca36a"
+  },
+  "id": "KfkwP20Ec1bYWZTf",
+  "tags": []
+}

@@ -1,0 +1,523 @@
+{
+  "name": "Company_Info_Extraction_Part_2",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "seconds"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -3140,
+        280
+      ],
+      "id": "81816de0-8ade-4259-827f-def57492392b",
+      "name": "Schedule Trigger"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        -2700,
+        280
+      ],
+      "id": "1eb646f3-07ee-437c-b2ed-0c367f8a08fd",
+      "name": "Loop Over Items - 1"
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1z7vW9tveIYEanNcEEXzpfcnQi3fQrmPn5nw0DjupoB4",
+          "mode": "list",
+          "cachedResultName": "NIFTY 100",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1z7vW9tveIYEanNcEEXzpfcnQi3fQrmPn5nw0DjupoB4/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 2137939227,
+          "mode": "list",
+          "cachedResultName": "ind_nifty100list",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1z7vW9tveIYEanNcEEXzpfcnQi3fQrmPn5nw0DjupoB4/edit#gid=2137939227"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        -2920,
+        280
+      ],
+      "id": "478360b7-8d44-4605-87b3-6c21e452fa40",
+      "name": "Google Sheets",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "DGSDE9AyNVaScfZd",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\n\nconst result = items.map(item => {\n    let rawOutput = item.json.output; // fixed lowercase key\n\n    if (typeof rawOutput !== 'string') {\n        return {\n            json: {\n                error: \"Invalid or missing 'output' field.\"\n            }\n        };\n    }\n\n    // Clean markdown-style code fences\n    rawOutput = rawOutput.replace(/^```json\\s*/g, \"\").replace(/```$/g, \"\").trim();\n\n    // Unescape characters\n    rawOutput = rawOutput.replace(/\\\\n/g, \"\\n\")\n                         .replace(/\\\\t/g, \"\\t\")\n                         .replace(/\\\\\"/g, '\"');\n\n    // Optional: remove excessive backslashes\n    rawOutput = rawOutput.replace(/\\\\\\\\/g, \"\\\\\");\n\n    // Return cleaned output\n    return {\n        json: {\n            cleanedOutput: rawOutput\n        }\n    };\n});\n\nreturn result;\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1700,
+        300
+      ],
+      "id": "6268ad40-9846-42ff-98c1-15acaa843058",
+      "name": "Return cleaned output"
+    },
+    {
+      "parameters": {
+        "schema": {
+          "__rl": true,
+          "mode": "list",
+          "value": "public"
+        },
+        "table": {
+          "__rl": true,
+          "value": "companies_details",
+          "mode": "list",
+          "cachedResultName": "companies_details"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "company_name": "={{ $json.Company_detail.Company_Name }}",
+            "basic_overview": "={{ $json.Company_detail.Basic_Overview }}",
+            "business_segments": "={{ $json.Company_detail.Business_Segments }}",
+            "corporate_structure": "={{ $json.Company_detail.Corporate_Structure }}",
+            "financialhighlights": "={{ $json.Company_detail.Financial_Highlights }}",
+            "company_history": "={{ $json.Company_detail.Company_History }}",
+            "acquisitionsandpartnerships": "={{ $json.Company_detail.Acquisitions_And_Partnerships }}",
+            "operationsandstrategies": "={{ $json.Company_detail.Operations_And_Strategies }}",
+            "swotanalysis": "={{ $json.Company_detail.SWOT_Analysis }}",
+            "controversiesandlegalissues": "={{ $json.Company_detail.Controversies_And_Legal_Issues }}",
+            "awardsandrecognitions": "={{ $json.Company_detail.Awards_And_Recognitions }}",
+            "strategicandmarketposition": "={{ $json.Company_detail.Strategic_And_Market_Position }}",
+            "recentstrategicfocusandoutlook": "={{ $json.Company_detail.Recent_Strategic_Focus_And_Outlook }}",
+            "conclusion": "={{ $json.Company_detail.Conclusion }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "company_id",
+              "displayName": "company_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "metadata_id",
+              "displayName": "metadata_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "company_name",
+              "displayName": "company_name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "basic_overview",
+              "displayName": "basic_overview",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "object",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "business_segments",
+              "displayName": "business_segments",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "object",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "corporate_structure",
+              "displayName": "corporate_structure",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "object",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "financialhighlights",
+              "displayName": "financialhighlights",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "object",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "company_history",
+              "displayName": "company_history",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "object",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "acquisitionsandpartnerships",
+              "displayName": "acquisitionsandpartnerships",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "object",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "operationsandstrategies",
+              "displayName": "operationsandstrategies",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "object",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "swotanalysis",
+              "displayName": "swotanalysis",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "object",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "controversiesandlegalissues",
+              "displayName": "controversiesandlegalissues",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "object",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "awardsandrecognitions",
+              "displayName": "awardsandrecognitions",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "object",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "strategicandmarketposition",
+              "displayName": "strategicandmarketposition",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "object",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "recentstrategicfocusandoutlook",
+              "displayName": "recentstrategicfocusandoutlook",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "object",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "conclusion",
+              "displayName": "conclusion",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "object",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        -1300,
+        300
+      ],
+      "id": "a888f300-e4f3-428c-9c95-9c5905ebd778",
+      "name": "Postgres",
+      "credentials": {
+        "postgres": {
+          "id": "RtUnZdI3lT4wKYRL",
+          "name": "Local PostgreSQL"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "8e8325f5-b1ee-40b0-a00d-69ea13173611",
+              "name": "Company Name",
+              "value": "={{ $json[\"Company Name\"] }}",
+              "type": "string"
+            },
+            {
+              "id": "6d2d5d48-d181-40db-b828-b0eb9be14224",
+              "name": "Industry",
+              "value": "={{ $json.Industry }}",
+              "type": "string"
+            },
+            {
+              "id": "7a1ca101-6858-4a78-b1d5-f2693adc3358",
+              "name": "Symbol",
+              "value": "={{ $json.Symbol }}",
+              "type": "string"
+            },
+            {
+              "id": "6ac01316-d928-4104-9c03-95fe9b6296db",
+              "name": "ISIN Code",
+              "value": "={{ $json[\"ISIN Code\"] }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -2460,
+        300
+      ],
+      "id": "9d7d00f7-d06e-480c-b92c-c3ef7fe2f4df",
+      "name": "SELECT Company Name, Industry, Symbol, ISIN Code"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Company Name - {{ $json[\"Company Name\"] }}\nIndustry - {{ $json.Industry }}\nSymbol - {{ $json.Symbol }}\nISIN Code - {{ $json[\"ISIN Code\"] }}\n",
+        "hasOutputParser": true,
+        "options": {
+          "systemMessage": "=You are a meticulous, detail‑oriented research assistant with real‑time web access.  \nYour sole task is to transform **one user message**—containing ONLY:\n\n• Company Name  \n• Industry  \n• Ticker Symbol (exchange‑agnostic)  \n• ISIN Code  \n\ninto a fully populated company profile **strictly in the JSON structure shown below**.\n\n──────────────────────────────── JSON TEMPLATE ────────────────────────────────\n{\n  \"Company_detail\": {\n    \"Company_Name\": \"\",\n    \"Basic_Overview\": {\n      \"Legal_Name\": \"\",\n      \"Type_Of_Entity\": \"\",\n      \"Traded_As\": {\n        \"Bombay_Stock_Exchange_BSE\": \"\",\n        \"National_Stock_Exchange_NSE\": \"\",\n        \"International_Securities_Identification_Number_ISIN\": \"\",\n        \"Ticker_Symbol\": \"\"\n      },\n      \"Industry\": \"\",\n      \"Sector\": \"\",\n      \"Year_Founded\": \"\",\n      \"Founders\": [\n        {\n          \"Name\": \"\",\n          \"Role\": \"\",\n          \"Bio\": \"\"\n        }\n      ],\n      \"Headquarters\": {\n        \"Address\": \"\",\n        \"City\": \"\",\n        \"State\": \"\",\n        \"Country\": \"\",\n        \"Contact_Details\": {\n          \"Phone\": \"\",\n          \"Fax\": \"\",\n          \"Email\": \"\",\n          \"Website\": \"\"\n        }\n      },\n      \"Key_People\": [\n        {\n          \"Name\": \"\",\n          \"Position\": \"\",\n          \"Bio\": \"\",\n          \"Tenure\": \"\",\n          \"Previous_Experience\": [],\n          \"Education\": []\n        }\n      ],\n      \"Mission_And_Vision\": {\n        \"Mission\": \"\",\n        \"Vision\": \"\"\n      },\n      \"Values\": [],\n      \"Tags\": []\n    },\n    \"Business_Segments\": {\n      \"Segment_Name\": \"\",\n      \"Description\": \"\",\n      \"Products_And_Services\": [\n        {\n          \"Product_Name\": \"\",\n          \"Description\": \"\",\n          \"Target_Clients\": [],\n          \"Pricing_Model\": \"\",\n          \"Distribution_Channels\": [],\n          \"Competitors\": []\n        }\n      ],\n      \"Sub_Segments\": [\n        {\n          \"Sub_Segment_Name\": \"\",\n          \"Description\": \"\",\n          \"Products\": []\n        }\n      ],\n      \"Key_Performance_Indicators\": [\n        {\n          \"KPI_Name\": \"\",\n          \"Value\": \"\",\n          \"Unit\": \"\"\n        }\n      ],\n      \"Market_Share\": \"\",\n      \"Growth_Rate\": \"\",\n      \"Revenue_Contribution\": \"\",\n      \"Operational_Regions\": []\n    },\n    \"Corporate_Structure\": {\n      \"Market_Capitalization\": \"\",\n      \"Enterprise_Value\": \"\",\n      \"Shareholding\": {\n        \"Promoters\": \"\",\n        \"Mutual_Funds\": \"\",\n        \"Foreign_Institutional_Investors\": \"\",\n        \"Individuals\": \"\",\n        \"Corporate_Bodies\": \"\",\n        \"Others\": \"\"\n      },\n      \"Subsidiaries\": [\n        {\n          \"Name\": \"\",\n          \"Business_Focus\": \"\",\n          \"Ownership_Percentage\": \"\",\n          \"Financial_Contribution\": \"\",\n          \"Divisions\": [\n            {\n              \"Division_Name\": \"\",\n              \"Products\": []\n            }\n          ]\n        }\n      ],\n      \"Joint_Ventures\": [\n        {\n          \"Name\": \"\",\n          \"Partners\": [],\n          \"Ownership_Percentage\": \"\",\n          \"Purpose\": \"\"\n        }\n      ],\n      \"Affiliates\": [],\n      \"Related_Parties\": []\n    },\n    \"Financial_Highlights\": {\n      \"Latest_Financials\": {\n        \"Currency\": \"INR\",\n        \"Revenue\": {\n          \"Amount\": \"\",\n          \"Unit\": \"Crore\"\n        },\n        \"Gross_Profit\": \"\",\n        \"Operating_Income\": \"\",\n        \"Net_Income\": {\n          \"Amount\": \"\",\n          \"Unit\": \"Crore\"\n        },\n        \"AUM\": {\n          \"Total_AUM\": \"\",\n          \"Unit\": \"Crore\"\n        },\n        \"EPS\": \"\",\n        \"Debt_To_Equity_Ratio\": \"\",\n        \"Cash_Flow\": {\n          \"Operating_Cash_Flow\": \"\",\n          \"Investing_Cash_Flow\": \"\",\n          \"Financing_Cash_Flow\": \"\"\n        },\n        \"Net_Worth\": \"\",\n        \"Return_On_Equity\": \"\",\n        \"Return_On_Assets\": \"\",\n        \"Number_Of_Employees\": \"\"\n      },\n      \"Custom_Metrics\": [\n        {\n          \"Metric_Name\": \"\",\n          \"Value\": \"\",\n          \"Unit\": \"\"\n        }\n      ],\n      \"Growth_And_Profit_Drivers\": [\n        {\n          \"Segment\": \"\",\n          \"Drivers\": []\n        }\n      ],\n      \"Historical_Financial_Data\": [\n        {\n          \"Year\": \"\",\n          \"Revenue\": \"\",\n          \"Net_Income\": \"\",\n          \"EPS\": \"\",\n          \"Dividends\": \"\"\n        }\n      ],\n      \"Financial_Ratios\": [\n        {\n          \"Ratio_Name\": \"\",\n          \"Value\": \"\"\n        }\n      ]\n    },\n    \"Company_History\": {\n      \"History_And_Timeline\": [\n        {\n          \"Year\": \"\",\n          \"Event\": \"\",\n          \"Impact\": \"\",\n          \"Milestone_Type\": \"\"\n        }\n      ]\n    },\n    \"Acquisitions_And_Partnerships\": {\n      \"Acquisitions\": [\n        {\n          \"Company_Name\": \"\",\n          \"Year\": \"\",\n          \"Reason\": \"\",\n          \"Cost\": \"\",\n          \"Outcome\": \"\",\n          \"Impact_On_Business\": \"\"\n        }\n      ],\n      \"Partnerships\": [\n        {\n          \"Partner_Name\": \"\",\n          \"Year\": \"\",\n          \"Purpose\": \"\",\n          \"Outcome\": \"\",\n          \"Duration\": \"\"\n        }\n      ]\n    },\n    \"Operations_And_Strategies\": {\n      \"Digitization_And_Tech_Investments\": [],\n      \"Geographic_Expansion\": [],\n      \"Sustainability_Initiatives\": [],\n      \"Strategic_Initiatives\": [\n        {\n          \"Initiative_Name\": \"\",\n          \"Description\": \"\",\n          \"Expected_Impact\": \"\",\n          \"Status\": \"\"\n        }\n      ],\n      \"Business_Continuity_Plans\": [],\n      \"Supply_Chain_Management\": []\n    },\n    \"SWOT_Analysis\": {\n      \"Strengths\": [],\n      \"Weaknesses\": [],\n      \"Opportunities\": [],\n      \"Threats\": []\n    },\n    \"Controversies_And_Legal_Issues\": {\n      \"Issue\": \"\",\n      \"Summary\": \"\",\n      \"Regulatory_Action\": \"\",\n      \"Outcome\": \"\",\n      \"Status\": \"\",\n      \"Impact_On_Reputation\": \"\"\n    },\n    \"Awards_And_Recognitions\": {\n      \"Award_Name\": \"\",\n      \"Category\": \"\",\n      \"Year\": \"\",\n      \"Reason\": \"\",\n      \"Issuer\": \"\",\n      \"Significance\": \"\"\n    },\n    \"Strategic_And_Market_Position\": {\n      \"Investment_Philosophy\": \"\",\n      \"Distribution_Network\": \"\",\n      \"Target_Clientele\": \"\",\n      \"Competitive_Advantage\": [],\n      \"Market_Position\": \"\",\n      \"Branding_Strategy\": \"\"\n    },\n    \"Recent_Strategic_Focus_And_Outlook\": {\n      \"Digitization_And_Technology\": [],\n      \"Growth_Plans\": [],\n      \"Expansion_Strategies\": [],\n      \"Market_Outlook\": \"\",\n      \"Management_Guidance\": \"\",\n      \"Risks_And_Challenges\": []\n    },\n    \"Conclusion\": {\n      \"Summary_of_company_info\": \"\"\n    }\n  }\n}\n───────────────────────────────────────────────────────────────────────────────\n\n**INSTRUCTIONS**\n\n1. **Do not alter, add, or remove any keys.**  \n2. **Every key must have a value.**  \n   • If reliable data is not found, leave the value as an empty string (`\"\"`) or empty list (`[]`) as applicable.  \n3. Perform live web searches, cross‑checking multiple reputable sources (e.g., company filings, stock‑exchange disclosures, news, investor presentations).  \n4. Use the currency and units already specified in the template.  \n5. Add multiple objects inside lists where the template shows one example object (e.g., multiple founders, KPIs, subsidiaries) if information exists.  \n6. Maintain factual accuracy, cite only within your reasoning (not in the output).  \n7. **Return only the final JSON—no narrative, no code fences, no commentary.**  \n8. Validate output for proper JSON syntax before sending.  \n\n**Begin processing immediately after receiving the user message.**  \n"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.7,
+      "position": [
+        -2260,
+        300
+      ],
+      "id": "77a281d7-50df-4241-8511-d1af633d5ab7",
+      "name": "Company_Info Extraction "
+    },
+    {
+      "parameters": {
+        "model": "deepseek/deepseek-r1-distill-qwen-14b",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenRouter",
+      "typeVersion": 1,
+      "position": [
+        -2300,
+        500
+      ],
+      "id": "ce9eef66-fe32-49ff-9af0-9cf492a7f013",
+      "name": "OpenRouter Chat Model 1",
+      "credentials": {
+        "openRouterApi": {
+          "id": "vJsXY1iYPQ5FRUqd",
+          "name": "OpenRouter account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "b375b9b1-1d9a-4bed-8737-4f1fb6cdb253",
+              "name": "output",
+              "value": "={{ $('Company_Info Extraction ').item.json.output }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -1900,
+        300
+      ],
+      "id": "4c7c8442-d62e-41a5-a46e-78a02a2e7096",
+      "name": "Company_Info_Output"
+    },
+    {
+      "parameters": {
+        "jsCode": "const raw = items[0].json.cleanedOutput;\n\n// Step 1: Parse the escaped JSON string\nlet parsed;\ntry {\n  parsed = JSON.parse(raw);\n} catch (err) {\n  throw new Error(\"Invalid JSON in cleanedOutput: \" + err.message);\n}\n\n// Step 2: Recursively replace empty values\nfunction fillMissingValues(obj) {\n  if (Array.isArray(obj)) {\n    return obj.length === 0 ? \"Not Found\" : obj.map(fillMissingValues);\n  } else if (typeof obj === 'object' && obj !== null) {\n    const newObj = {};\n    for (const key in obj) {\n      const val = obj[key];\n      if (val === \"\" || (Array.isArray(val) && val.length === 0)) {\n        newObj[key] = \"Not Found\";\n      } else {\n        newObj[key] = fillMissingValues(val);\n      }\n    }\n    return newObj;\n  } else {\n    return obj;\n  }\n}\n\n// Step 3: Apply transformation\nconst cleanedOutput = fillMissingValues(parsed);\n\n// Return the updated JSON\nreturn [{ json: cleanedOutput }];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1500,
+        300
+      ],
+      "id": "a3569515-be15-4563-8aa6-47da290a3eda",
+      "name": "Company_Info_Output TO JSON Format"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Google Sheets",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Over Items - 1": {
+      "main": [
+        [],
+        [
+          {
+            "node": "SELECT Company Name, Industry, Symbol, ISIN Code",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Sheets": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items - 1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Return cleaned output": {
+      "main": [
+        [
+          {
+            "node": "Company_Info_Output TO JSON Format",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Postgres": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items - 1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "SELECT Company Name, Industry, Symbol, ISIN Code": {
+      "main": [
+        [
+          {
+            "node": "Company_Info Extraction ",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Company_Info Extraction ": {
+      "main": [
+        [
+          {
+            "node": "Company_Info_Output",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenRouter Chat Model 1": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Company_Info Extraction ",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Company_Info_Output": {
+      "main": [
+        [
+          {
+            "node": "Return cleaned output",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Company_Info_Output TO JSON Format": {
+      "main": [
+        [
+          {
+            "node": "Postgres",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "121d3714-b183-42a6-8238-d6507b659253",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "558d88703fb65b2d0e44613bc35916258b0f0bf983c5d4730c00c424b77ca36a"
+  },
+  "id": "GUhpNcuVyPSvvB4c",
+  "tags": []
+}
