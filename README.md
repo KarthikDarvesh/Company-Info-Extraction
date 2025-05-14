@@ -69,7 +69,7 @@ The workflow extracts and organizes the following major sections:
 
 ---
 ## N8N WORKFLOW
-<img width="1444" alt="image" src="https://github.com/user-attachments/assets/7eb0ea17-4909-460e-8339-1cc27c651d75" />
+![image](https://github.com/user-attachments/assets/2d8ccfb7-39e1-4a9d-a1a8-ab88372c4c6d)
 
 ## 📥 Part 1 → Input Ingestion & Preprocessing
 
@@ -320,7 +320,7 @@ uvicorn routes:app --host 0.0.0.0 --port 8000 --reload
 ---
 
 ## N8N WORKFLOW - (WITHOUT RELAYING ON THE STORM API)
-<img width="1604" alt="image" src="https://github.com/user-attachments/assets/6f467913-94f1-4552-8ff5-71385b0e4443" />
+![image](https://github.com/user-attachments/assets/f6d11cc8-759d-4d40-9a33-117ee89fd13f)
 
 ## 📋 Overview
 
